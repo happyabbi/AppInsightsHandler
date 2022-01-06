@@ -1,9 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Linq.Expressions;
-using System.Text;
-using System.Threading.Tasks;
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.DataContracts;
 using Microsoft.ApplicationInsights.Extensibility;
@@ -12,408 +8,373 @@ namespace AppInsightsHandler
 {
     public class AppInsightsHandler
     {
-        
+        private TelemetryClient _client;
 
-        private TelemetryClient Client;
+        private readonly List<KeyValuePair<string, string>> _contextGlobalProperties =
+            new List<KeyValuePair<string, string>>();
 
-        private EventTelemetry eventTelemetry;
-        private MetricTelemetry metricTelemetry;
-        private TraceTelemetry traceTelemetry;
-        private RequestTelemetry requestTelemetry;
-        private ExceptionTelemetry exceptionTelemetry;
+        private EventTelemetry _eventTelemetry;
+        private ExceptionTelemetry _exceptionTelemetry;
+        private readonly List<KeyValuePair<string, double>> _metrics = new List<KeyValuePair<string, double>>();
+        private MetricTelemetry _metricTelemetry;
 
-        string objectType;
+        private string _objectType;
 
-        List<KeyValuePair<string, string>> properties = new List<KeyValuePair<string, string>>();
-        List<KeyValuePair<string, string>> ContextGlobalProperties = new List<KeyValuePair<string, string>>();
-        List<KeyValuePair<string, Double>> metrics = new List<KeyValuePair<string, Double>>();
+        private readonly List<KeyValuePair<string, string>> _properties = new List<KeyValuePair<string, string>>();
+        private RequestTelemetry _requestTelemetry;
+        private TraceTelemetry _traceTelemetry;
 
-        public void instantiateClient(string _instrumentationKey, string _objectType)
+        public void InstantiateClient(string instrumentationKey, string objectType)
         {
-
-            if (string.IsNullOrEmpty(_instrumentationKey))
-            {
-                throw new ArgumentNullException(nameof(_instrumentationKey), "Instrumentation key is required.");
-            }
-            if (string.IsNullOrEmpty(_objectType))
-            {
-                throw new ArgumentNullException(nameof(_objectType), "Object type is required.");
-            }
-            objectType = _objectType;
-            TelemetryConfiguration config = new TelemetryConfiguration(_instrumentationKey);
-            Client = new TelemetryClient(config);
-            switch (objectType)
+            if (string.IsNullOrEmpty(instrumentationKey))
+                throw new ArgumentNullException(nameof(instrumentationKey), "Instrumentation key is required.");
+            if (string.IsNullOrEmpty(objectType))
+                throw new ArgumentNullException(nameof(objectType), "Object type is required.");
+            this._objectType = objectType;
+            var config = new TelemetryConfiguration(instrumentationKey);
+            _client = new TelemetryClient(config);
+            switch (this._objectType)
             {
                 case "EventTelemetry":
-                    eventTelemetry = new EventTelemetry();
+                    _eventTelemetry = new EventTelemetry();
                     break;
                 case "MetricTelemetry":
-                    metricTelemetry = new MetricTelemetry();
+                    _metricTelemetry = new MetricTelemetry();
                     break;
                 case "TraceTelemetry":
-                    traceTelemetry = new TraceTelemetry();
+                    _traceTelemetry = new TraceTelemetry();
                     break;
                 case "ExceptionTelemetry":
-                    exceptionTelemetry = new ExceptionTelemetry();
+                    _exceptionTelemetry = new ExceptionTelemetry();
                     break;
                 case "RequestTelemetry":
-                    requestTelemetry = new RequestTelemetry();
+                    _requestTelemetry = new RequestTelemetry();
                     break;
             }
-
         }
 
-        public void addProperty(string _key, string _value)
+        public void AddProperty(string key, string value)
         {
-            KeyValuePair<string, string> property = new KeyValuePair<string, string>(_key, _value);
-            if (!properties.Exists(item => item.Key == _key))
-            {
-                properties.Add(property);
-            }
+            var property = new KeyValuePair<string, string>(key, value);
+            if (!_properties.Exists(item => item.Key == key)) _properties.Add(property);
         }
 
-        public void addContextGlobalProperty(string _key, string _value)
+        public void AddContextGlobalProperty(string key, string value)
         {
-            KeyValuePair<string, string> property = new KeyValuePair<string, string>(_key, _value);
-            if (!ContextGlobalProperties.Exists(item => item.Key == _key))
-            {
-                ContextGlobalProperties.Add(property);
-            }
-        }
-        public void addMetrics(string _key, Double _value)
-        {
-            KeyValuePair<string, Double> metric = new KeyValuePair<string, Double>(_key, _value);
-            if (!metrics.Exists(item => item.Key == _key))
-            {
-                metrics.Add(metric);
-            }
+            var property = new KeyValuePair<string, string>(key, value);
+            if (!_contextGlobalProperties.Exists(item => item.Key == key)) _contextGlobalProperties.Add(property);
         }
 
-        public void setContextUserInfo(string _accountId, string _authenticatedUserId, string _userId = "", string _userAgent = "")
+        public void AddMetrics(string key, double value)
         {
-            switch (objectType)
+            var metric = new KeyValuePair<string, double>(key, value);
+            if (!_metrics.Exists(item => item.Key == key)) _metrics.Add(metric);
+        }
+
+        public void SetContextUserInfo(string accountId, string authenticatedUserId, string userId = "",
+            string userAgent = "")
+        {
+            switch (_objectType)
             {
                 case "EventTelemetry":
-                    eventTelemetry.Context.User.AccountId = _accountId;
-                    eventTelemetry.Context.User.AuthenticatedUserId = _authenticatedUserId;
-                    eventTelemetry.Context.User.Id = _userId;
-                    eventTelemetry.Context.User.UserAgent = _userAgent;
+                    _eventTelemetry.Context.User.AccountId = accountId;
+                    _eventTelemetry.Context.User.AuthenticatedUserId = authenticatedUserId;
+                    _eventTelemetry.Context.User.Id = userId;
+                    _eventTelemetry.Context.User.UserAgent = userAgent;
                     break;
                 case "MetricTelemetry":
-                    metricTelemetry.Context.User.AccountId = _accountId;
-                    metricTelemetry.Context.User.AuthenticatedUserId = _authenticatedUserId;
-                    metricTelemetry.Context.User.Id = _userId;
-                    metricTelemetry.Context.User.UserAgent = _userAgent;
+                    _metricTelemetry.Context.User.AccountId = accountId;
+                    _metricTelemetry.Context.User.AuthenticatedUserId = authenticatedUserId;
+                    _metricTelemetry.Context.User.Id = userId;
+                    _metricTelemetry.Context.User.UserAgent = userAgent;
                     break;
                 case "TraceTelemetry":
-                    traceTelemetry.Context.User.AccountId = _accountId;
-                    traceTelemetry.Context.User.AuthenticatedUserId = _authenticatedUserId;
-                    traceTelemetry.Context.User.Id = _userId;
-                    traceTelemetry.Context.User.UserAgent = _userAgent;
+                    _traceTelemetry.Context.User.AccountId = accountId;
+                    _traceTelemetry.Context.User.AuthenticatedUserId = authenticatedUserId;
+                    _traceTelemetry.Context.User.Id = userId;
+                    _traceTelemetry.Context.User.UserAgent = userAgent;
                     break;
                 case "ExceptionTelemetry":
-                    exceptionTelemetry.Context.User.AccountId = _accountId;
-                    exceptionTelemetry.Context.User.AuthenticatedUserId = _authenticatedUserId;
-                    exceptionTelemetry.Context.User.Id = _userId;
-                    exceptionTelemetry.Context.User.UserAgent = _userAgent;
+                    _exceptionTelemetry.Context.User.AccountId = accountId;
+                    _exceptionTelemetry.Context.User.AuthenticatedUserId = authenticatedUserId;
+                    _exceptionTelemetry.Context.User.Id = userId;
+                    _exceptionTelemetry.Context.User.UserAgent = userAgent;
                     break;
                 case "RequestTelemetry":
-                    requestTelemetry.Context.User.AccountId = _accountId;
-                    requestTelemetry.Context.User.AuthenticatedUserId = _authenticatedUserId;
-                    requestTelemetry.Context.User.Id = _userId;
-                    requestTelemetry.Context.User.UserAgent = _userAgent;
-                    break;
-            }
-        }
-        public void setContextOperation(string _operationId, string _operationName, string _parentId = "")
-        {
-            switch (objectType)
-            {
-                case "EventTelemetry":
-                    eventTelemetry.Context.Operation.Id = _operationId;
-                    eventTelemetry.Context.Operation.Name = _operationName;
-                    eventTelemetry.Context.Operation.ParentId = _parentId;
-                    break;
-                case "MetricTelemetry":
-                    metricTelemetry.Context.Operation.Id = _operationId;
-                    metricTelemetry.Context.Operation.Name = _operationName;
-                    metricTelemetry.Context.Operation.ParentId = _parentId;
-                    break;
-                case "TraceTelemetry":
-                    traceTelemetry.Context.Operation.Id = _operationId;
-                    traceTelemetry.Context.Operation.Name = _operationName;
-                    traceTelemetry.Context.Operation.ParentId = _parentId;
-                    break;
-                case "ExceptionTelemetry":
-                    exceptionTelemetry.Context.Operation.Id = _operationId;
-                    exceptionTelemetry.Context.Operation.Name = _operationName;
-                    exceptionTelemetry.Context.Operation.ParentId = _parentId;
-                    break;
-                case "RequestTelemetry":
-                    requestTelemetry.Context.Operation.Id = _operationId;
-                    requestTelemetry.Context.Operation.Name = _operationName;
-                    requestTelemetry.Context.Operation.ParentId = _parentId;
-                    break;
-            }
-        }
-        public void setContextComponentVersion(string _version)
-        {
-            switch (objectType)
-            {
-                case "EventTelemetry":
-                    eventTelemetry.Context.Component.Version = _version;
-                    break;
-                case "MetricTelemetry":
-                    metricTelemetry.Context.Component.Version = _version;
-                    break;
-                case "TraceTelemetry":
-                    traceTelemetry.Context.Component.Version = _version;
-                    break;
-                case "ExceptionTelemetry":
-                    exceptionTelemetry.Context.Component.Version = _version;
-                    break;
-                case "RequestTelemetry":
-                    requestTelemetry.Context.Component.Version = _version;
+                    _requestTelemetry.Context.User.AccountId = accountId;
+                    _requestTelemetry.Context.User.AuthenticatedUserId = authenticatedUserId;
+                    _requestTelemetry.Context.User.Id = userId;
+                    _requestTelemetry.Context.User.UserAgent = userAgent;
                     break;
             }
         }
 
-        public void setContextGlobalProperties()
+        public void SetContextOperation(string operationId, string operationName, string parentId = "")
         {
-            foreach (KeyValuePair<string, string> element in ContextGlobalProperties)
+            switch (_objectType)
             {
-                
-                switch (objectType)
+                case "EventTelemetry":
+                    _eventTelemetry.Context.Operation.Id = operationId;
+                    _eventTelemetry.Context.Operation.Name = operationName;
+                    _eventTelemetry.Context.Operation.ParentId = parentId;
+                    break;
+                case "MetricTelemetry":
+                    _metricTelemetry.Context.Operation.Id = operationId;
+                    _metricTelemetry.Context.Operation.Name = operationName;
+                    _metricTelemetry.Context.Operation.ParentId = parentId;
+                    break;
+                case "TraceTelemetry":
+                    _traceTelemetry.Context.Operation.Id = operationId;
+                    _traceTelemetry.Context.Operation.Name = operationName;
+                    _traceTelemetry.Context.Operation.ParentId = parentId;
+                    break;
+                case "ExceptionTelemetry":
+                    _exceptionTelemetry.Context.Operation.Id = operationId;
+                    _exceptionTelemetry.Context.Operation.Name = operationName;
+                    _exceptionTelemetry.Context.Operation.ParentId = parentId;
+                    break;
+                case "RequestTelemetry":
+                    _requestTelemetry.Context.Operation.Id = operationId;
+                    _requestTelemetry.Context.Operation.Name = operationName;
+                    _requestTelemetry.Context.Operation.ParentId = parentId;
+                    break;
+            }
+        }
+
+        public void SetContextComponentVersion(string version)
+        {
+            switch (_objectType)
+            {
+                case "EventTelemetry":
+                    _eventTelemetry.Context.Component.Version = version;
+                    break;
+                case "MetricTelemetry":
+                    _metricTelemetry.Context.Component.Version = version;
+                    break;
+                case "TraceTelemetry":
+                    _traceTelemetry.Context.Component.Version = version;
+                    break;
+                case "ExceptionTelemetry":
+                    _exceptionTelemetry.Context.Component.Version = version;
+                    break;
+                case "RequestTelemetry":
+                    _requestTelemetry.Context.Component.Version = version;
+                    break;
+            }
+        }
+
+        public void SetContextGlobalProperties()
+        {
+            foreach (var element in _contextGlobalProperties)
+                switch (_objectType)
                 {
                     case "EventTelemetry":
-                        eventTelemetry.Context.GlobalProperties.Add(element);
+                        _eventTelemetry.Context.GlobalProperties.Add(element);
                         break;
                     case "MetricTelemetry":
-                        metricTelemetry.Context.GlobalProperties.Add(element);
+                        _metricTelemetry.Context.GlobalProperties.Add(element);
                         break;
                     case "TraceTelemetry":
-                        traceTelemetry.Context.GlobalProperties.Add(element);
+                        _traceTelemetry.Context.GlobalProperties.Add(element);
                         break;
                     case "ExceptionTelemetry":
-                        exceptionTelemetry.Context.GlobalProperties.Add(element);
+                        _exceptionTelemetry.Context.GlobalProperties.Add(element);
                         break;
                     case "RequestTelemetry":
-                        requestTelemetry.Context.GlobalProperties.Add(element);
+                        _requestTelemetry.Context.GlobalProperties.Add(element);
                         break;
                 }
-            }
         }
-       
-        public void setsysExceptionTelemetryValues(Exception _exception, string _message, string _problemId, int _severityLevel)
-        {
-            if (exceptionTelemetry != null)
-            {
 
-                exceptionTelemetry.Exception = _exception;
-                exceptionTelemetry.Message = _message;
-                exceptionTelemetry.ProblemId = _problemId;
-                switch (_severityLevel)
+        public void SetsysExceptionTelemetryValues(Exception exception, string message, string problemId,
+            int severityLevel)
+        {
+            if (_exceptionTelemetry != null)
+            {
+                _exceptionTelemetry.Exception = exception;
+                _exceptionTelemetry.Message = message;
+                _exceptionTelemetry.ProblemId = problemId;
+                switch (severityLevel)
                 {
                     case 0:
-                        exceptionTelemetry.SeverityLevel = SeverityLevel.Verbose;
+                        _exceptionTelemetry.SeverityLevel = SeverityLevel.Verbose;
                         break;
                     case 1:
-                        exceptionTelemetry.SeverityLevel = SeverityLevel.Information;
+                        _exceptionTelemetry.SeverityLevel = SeverityLevel.Information;
                         break;
                     case 2:
-                        exceptionTelemetry.SeverityLevel = SeverityLevel.Warning;
+                        _exceptionTelemetry.SeverityLevel = SeverityLevel.Warning;
                         break;
                     case 3:
-                        exceptionTelemetry.SeverityLevel = SeverityLevel.Error;
+                        _exceptionTelemetry.SeverityLevel = SeverityLevel.Error;
                         break;
                     case 4:
-                        exceptionTelemetry.SeverityLevel = SeverityLevel.Critical;
+                        _exceptionTelemetry.SeverityLevel = SeverityLevel.Critical;
                         break;
                     default:
-                        exceptionTelemetry.SeverityLevel = SeverityLevel.Information;
+                        _exceptionTelemetry.SeverityLevel = SeverityLevel.Information;
                         break;
                 }
-                exceptionTelemetry.Timestamp = DateTimeOffset.UtcNow;
-                foreach (KeyValuePair<string, string> element in properties)
-                {
-                    exceptionTelemetry.Properties.Add(element);
-                }
-                foreach (KeyValuePair<string, Double> element in metrics)
-                {
-                    exceptionTelemetry.Metrics.Add(element);
-                }
 
+                _exceptionTelemetry.Timestamp = DateTimeOffset.UtcNow;
+                foreach (var element in _properties) _exceptionTelemetry.Properties.Add(element);
+                foreach (var element in _metrics) _exceptionTelemetry.Metrics.Add(element);
             }
         }
-        public void setExceptionTelemetryValues(string _exceptionMessage, string _exceptionSource, string _message, string _problemId, int _severityLevel)
+
+        public void SetExceptionTelemetryValues(string exceptionMessage, string exceptionSource, string message,
+            string problemId, int severityLevel)
         {
-            if (exceptionTelemetry != null)
+            if (_exceptionTelemetry != null)
             {
-                Exception e = new Exception(_exceptionMessage);
-                e.Source = _exceptionSource;
-                exceptionTelemetry.Exception = e;
-                exceptionTelemetry.Message = _message;
-                exceptionTelemetry.ProblemId = _problemId;
-                switch (_severityLevel)
+                var e = new Exception(exceptionMessage)
+                {
+                    Source = exceptionSource
+                };
+                _exceptionTelemetry.Exception = e;
+                _exceptionTelemetry.Message = message;
+                _exceptionTelemetry.ProblemId = problemId;
+                switch (severityLevel)
                 {
                     case 0:
-                        exceptionTelemetry.SeverityLevel = SeverityLevel.Verbose;
+                        _exceptionTelemetry.SeverityLevel = SeverityLevel.Verbose;
                         break;
                     case 1:
-                        exceptionTelemetry.SeverityLevel = SeverityLevel.Information;
+                        _exceptionTelemetry.SeverityLevel = SeverityLevel.Information;
                         break;
                     case 2:
-                        exceptionTelemetry.SeverityLevel = SeverityLevel.Warning;
+                        _exceptionTelemetry.SeverityLevel = SeverityLevel.Warning;
                         break;
                     case 3:
-                        exceptionTelemetry.SeverityLevel = SeverityLevel.Error;
+                        _exceptionTelemetry.SeverityLevel = SeverityLevel.Error;
                         break;
                     case 4:
-                        exceptionTelemetry.SeverityLevel = SeverityLevel.Critical;
+                        _exceptionTelemetry.SeverityLevel = SeverityLevel.Critical;
                         break;
                     default:
-                        exceptionTelemetry.SeverityLevel = SeverityLevel.Information;
+                        _exceptionTelemetry.SeverityLevel = SeverityLevel.Information;
                         break;
                 }
-                exceptionTelemetry.Timestamp = DateTimeOffset.UtcNow;
-                foreach (KeyValuePair<string, string> element in properties)
-                {
-                    exceptionTelemetry.Properties.Add(element);
-                }
-                foreach (KeyValuePair<string, Double> element in metrics)
-                {
-                    exceptionTelemetry.Metrics.Add(element);
-                }
 
+                _exceptionTelemetry.Timestamp = DateTimeOffset.UtcNow;
+                foreach (var element in _properties) _exceptionTelemetry.Properties.Add(element);
+                foreach (var element in _metrics) _exceptionTelemetry.Metrics.Add(element);
             }
         }
-        public void setEventTelemetryValues(string _eventName)
+
+        public void SetEventTelemetryValues(string eventName)
         {
-            if (eventTelemetry != null)
+            if (_eventTelemetry != null)
             {
-                eventTelemetry.Name = _eventName;
-                eventTelemetry.Timestamp = DateTimeOffset.UtcNow;
-                foreach (KeyValuePair<string, string> element in properties)
-                {
-                    eventTelemetry.Properties.Add(element);
-                }
-                foreach (KeyValuePair<string, Double> element in metrics)
-                {
-                    eventTelemetry.Metrics.Add(element);
-                }
+                _eventTelemetry.Name = eventName;
+                _eventTelemetry.Timestamp = DateTimeOffset.UtcNow;
+                foreach (var element in _properties) _eventTelemetry.Properties.Add(element);
+                foreach (var element in _metrics) _eventTelemetry.Metrics.Add(element);
             }
         }
-        public void setRequestTelemetryValues(string _requestName, string _requestId, Boolean _success, string _responseCode, string _source, string _uriString, Double _duration)
+
+        public void SetRequestTelemetryValues(string requestName, string requestId, bool success,
+            string responseCode, string source, string uriString, double duration)
         {
-            if (requestTelemetry != null)
+            if (_requestTelemetry != null)
             {
-                requestTelemetry.Name = _requestName;
-                requestTelemetry.Timestamp = DateTimeOffset.UtcNow;
-                requestTelemetry.Success = _success;
-                requestTelemetry.Id = _requestId;
-                requestTelemetry.ResponseCode = _responseCode;
-                requestTelemetry.Source = _source;
-                requestTelemetry.Duration = TimeSpan.FromSeconds(_duration);
-                if (_uriString != "")
+                _requestTelemetry.Name = requestName;
+                _requestTelemetry.Timestamp = DateTimeOffset.UtcNow;
+                _requestTelemetry.Success = success;
+                _requestTelemetry.Id = requestId;
+                _requestTelemetry.ResponseCode = responseCode;
+                _requestTelemetry.Source = source;
+                _requestTelemetry.Duration = TimeSpan.FromSeconds(duration);
+                if (uriString != "")
                 {
-                    Uri uri = new Uri(_uriString);
-                    requestTelemetry.Url = uri;
+                    var uri = new Uri(uriString);
+                    _requestTelemetry.Url = uri;
                 }
 
-                foreach (KeyValuePair<string, string> element in properties)
-                {
-                    requestTelemetry.Properties.Add(element);
-                }
-                foreach (KeyValuePair<string, Double> element in metrics)
-                {
-                    requestTelemetry.Metrics.Add(element);
-                }
+                foreach (var element in _properties) _requestTelemetry.Properties.Add(element);
+                foreach (var element in _metrics) _requestTelemetry.Metrics.Add(element);
             }
         }
 
 
-        public void setMetricTelemetryValues(string _name, string _metricNamespace, Double _sum, int _count = 0, Double _min = 0, Double _max = 0)
+        public void SetMetricTelemetryValues(string name, string metricNamespace, double sum, int count = 0,
+            double min = 0, double max = 0)
         {
-            if (metricTelemetry != null)
+            if (_metricTelemetry != null)
             {
-                metricTelemetry.Name = _name;
-                metricTelemetry.Timestamp = DateTimeOffset.UtcNow;
-                metricTelemetry.MetricNamespace = _metricNamespace;
-                metricTelemetry.Sum = _sum;
-                if (_count != 0)
-                    metricTelemetry.Count = _count;
+                _metricTelemetry.Name = name;
+                _metricTelemetry.Timestamp = DateTimeOffset.UtcNow;
+                _metricTelemetry.MetricNamespace = metricNamespace;
+                _metricTelemetry.Sum = sum;
+                if (count != 0)
+                    _metricTelemetry.Count = count;
 
-                if (_min != 0)
-                    metricTelemetry.Min = _min;
+                if (min != 0)
+                    _metricTelemetry.Min = min;
 
-                if (_max != 0)
-                    metricTelemetry.Max = _max;
+                if (max != 0)
+                    _metricTelemetry.Max = max;
 
-                foreach (KeyValuePair<string, string> element in properties)
-                {
-                    metricTelemetry.Properties.Add(element);
-                }
-
+                foreach (var element in _properties) _metricTelemetry.Properties.Add(element);
             }
         }
-        public void setTraceTelemetryValues(string _message, int _severityLevel)
+
+        public void SetTraceTelemetryValues(string message, int severityLevel)
         {
-            if (traceTelemetry != null)
+            if (_traceTelemetry != null)
             {
-                traceTelemetry.Message = _message;
-                traceTelemetry.Timestamp = DateTimeOffset.UtcNow;
-                switch (_severityLevel)
+                _traceTelemetry.Message = message;
+                _traceTelemetry.Timestamp = DateTimeOffset.UtcNow;
+                switch (severityLevel)
                 {
                     case 0:
-                        traceTelemetry.SeverityLevel = SeverityLevel.Verbose;
+                        _traceTelemetry.SeverityLevel = SeverityLevel.Verbose;
                         break;
                     case 1:
-                        traceTelemetry.SeverityLevel = SeverityLevel.Information;
+                        _traceTelemetry.SeverityLevel = SeverityLevel.Information;
                         break;
                     case 2:
-                        traceTelemetry.SeverityLevel = SeverityLevel.Warning;
+                        _traceTelemetry.SeverityLevel = SeverityLevel.Warning;
                         break;
                     case 3:
-                        traceTelemetry.SeverityLevel = SeverityLevel.Error;
+                        _traceTelemetry.SeverityLevel = SeverityLevel.Error;
                         break;
                     case 4:
-                        traceTelemetry.SeverityLevel = SeverityLevel.Critical;
+                        _traceTelemetry.SeverityLevel = SeverityLevel.Critical;
                         break;
                     default:
-                        traceTelemetry.SeverityLevel = SeverityLevel.Information;
+                        _traceTelemetry.SeverityLevel = SeverityLevel.Information;
                         break;
                 }
-                foreach (KeyValuePair<string, string> element in properties)
-                {
-                    traceTelemetry.Properties.Add(element);
-                }
 
+                foreach (var element in _properties) _traceTelemetry.Properties.Add(element);
             }
         }
 
         public void TrackTelemetry()
         {
-            if (Client != null && objectType != "")
+            if (_client != null && _objectType != "")
             {
-                switch (objectType)
+                switch (_objectType)
                 {
                     case "EventTelemetry":
-                        Client.TrackEvent(eventTelemetry);
+                        _client.TrackEvent(_eventTelemetry);
                         break;
                     case "MetricTelemetry":
-                        Client.TrackMetric(metricTelemetry);
+                        _client.TrackMetric(_metricTelemetry);
                         break;
                     case "TraceTelemetry":
-                        Client.TrackTrace(traceTelemetry);
+                        _client.TrackTrace(_traceTelemetry);
                         break;
                     case "ExceptionTelemetry":
-                        Client.TrackException(exceptionTelemetry);
+                        _client.TrackException(_exceptionTelemetry);
                         break;
                     case "RequestTelemetry":
-                        Client.TrackRequest(requestTelemetry);
+                        _client.TrackRequest(_requestTelemetry);
                         break;
                 }
-                Client.Flush();
+
+                _client.Flush();
             }
         }
     }
